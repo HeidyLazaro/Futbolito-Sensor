@@ -46,17 +46,22 @@ fun FutbolitoGameScreen(viewModel: SensorViewModel, modifier: Modifier = Modifie
                 contentScale = ContentScale.FillBounds
             )
     ) {
-        val width = with(LocalDensity.current) { 360.dp.toPx() }
-        val height = with(LocalDensity.current) { 735.dp.toPx() }
-        val userRadius = with(LocalDensity.current) { 10.dp.toPx() }
+        val configuration = LocalConfiguration.current
+        val width = with(LocalDensity.current) { configuration.screenWidthDp.dp.toPx() }
+        val height = with(LocalDensity.current) { configuration.screenHeightDp.dp.toPx() }
+        val userRadius = width / 30
         val radius = width / 17
 
         var center by remember { mutableStateOf(Offset(width / 2, height / 2)) }
-        val orientation = LocalConfiguration.current.orientation
 
-        val topGoal = Offset((width / 2) - 80, 180f) to Offset((width / 2) + 75, 230f)
-        val bottomGoal =
-            Offset((width / 2) - 80, height - 100f) to Offset((width / 2) + 75, height - 50f)
+        val goalWidth = width * 0.4f
+        val goalHeight = height * 0.05f
+
+        val topGoal = Offset((width - goalWidth) / 2, goalHeight * 1.2f) to
+                Offset((width + goalWidth) / 2, goalHeight * 2.2f)
+
+        val bottomGoal = Offset((width - goalWidth) / 2, height - goalHeight * 0.6f) to
+                Offset((width + goalWidth) / 2, height - goalHeight * -0.4f)
 
         if (timeLeft > 0) {
             // Temporizer
@@ -91,10 +96,10 @@ fun FutbolitoGameScreen(viewModel: SensorViewModel, modifier: Modifier = Modifie
         }
 
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawRect(Color.Green, topGoal.first, androidx.compose.ui.geometry.Size(
+            drawRect(Color.Red, topGoal.first, androidx.compose.ui.geometry.Size(
                 topGoal.second.x - topGoal.first.x, topGoal.second.y - topGoal.first.y
             ))
-            drawRect(Color.Red, bottomGoal.first, androidx.compose.ui.geometry.Size(
+            drawRect(Color.Green, bottomGoal.first, androidx.compose.ui.geometry.Size(
                 bottomGoal.second.x - bottomGoal.first.x, bottomGoal.second.y - bottomGoal.first.y
             ))
             drawCircle(Color.White, userRadius, center)
@@ -143,7 +148,7 @@ fun FutbolitoGameScreen(viewModel: SensorViewModel, modifier: Modifier = Modifie
                     }
             ) {
                 Text(
-                    text = "¡Fin del juego!",
+                    text = if (topCount > bottomCount) "    ¡Fin del juego!\n¡Jugador verde gana!" else "   ¡Fin del juego!\n¡Jugador rojo gana!",
                     color = Color.Gray,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
