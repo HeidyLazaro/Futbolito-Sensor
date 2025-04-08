@@ -37,7 +37,14 @@ fun FutbolitoGameScreen(viewModel: SensorViewModel, modifier: Modifier = Modifie
     var topCount by remember { mutableStateOf(0) }
     var bottomCount by remember { mutableStateOf(0) }
     var timeLeft by remember { mutableStateOf(60) }
-    val dampingFactor = 0.8f // Para reducir la velocidad tras cada rebote
+
+    var prevTopCount by remember { mutableStateOf(0) }
+    var prevBottomCount by remember { mutableStateOf(0) }
+
+    val confetti = remember { mutableStateListOf<Triple<Offset, Offset, Color>>() }
+    val colors = listOf(Color.Yellow, Color.Magenta, Color.Cyan, Color.Green, Color.Red)
+
+    val dampingFactor = 0.8f
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -64,14 +71,13 @@ fun FutbolitoGameScreen(viewModel: SensorViewModel, modifier: Modifier = Modifie
                 Offset((width + goalWidth) / 2, height - goalHeight * -0.4f)
 
         if (timeLeft > 0) {
-            // Temporizer
             LaunchedEffect(Unit) {
                 while (timeLeft > 0) {
                     delay(1000L)
                     timeLeft--
                 }
             }
-            velocityX += x * 0.1f
+            velocityX += x * -0.1f
             velocityY += y * 0.1f
             center = Offset(
                 (center.x + velocityX).coerceIn(radius, width - radius),
@@ -84,11 +90,35 @@ fun FutbolitoGameScreen(viewModel: SensorViewModel, modifier: Modifier = Modifie
 
             if (center.y <= topGoal.second.y && center.x in topGoal.first.x..topGoal.second.x) {
                 topCount++
+                if (topCount > prevTopCount) {
+                    repeat(50) {
+                        val angle = (0..360).random().toFloat()
+                        val speed = (2..6).random()
+                        val velocity = Offset(
+                            x = speed * kotlin.math.cos(Math.toRadians(angle.toDouble())).toFloat(),
+                            y = speed * kotlin.math.sin(Math.toRadians(angle.toDouble())).toFloat()
+                        )
+                        confetti.add(Triple(center, velocity, colors.random()))
+                    }
+                    prevTopCount = topCount
+                }
                 center = Offset(width / 2, height / 2)
                 velocityX = 0f
                 velocityY = 0f
             } else if (center.y >= bottomGoal.first.y && center.x in bottomGoal.first.x..bottomGoal.second.x) {
                 bottomCount++
+                if (bottomCount > prevBottomCount) {
+                    repeat(50) {
+                        val angle = (0..360).random().toFloat()
+                        val speed = (2..6).random()
+                        val velocity = Offset(
+                            x = speed * kotlin.math.cos(Math.toRadians(angle.toDouble())).toFloat(),
+                            y = speed * kotlin.math.sin(Math.toRadians(angle.toDouble())).toFloat()
+                        )
+                        confetti.add(Triple(center, velocity, colors.random()))
+                    }
+                    prevBottomCount = bottomCount
+                }
                 center = Offset(width / 2, height / 2)
                 velocityX = 0f
                 velocityY = 0f
@@ -96,14 +126,25 @@ fun FutbolitoGameScreen(viewModel: SensorViewModel, modifier: Modifier = Modifie
         }
 
         Canvas(modifier = Modifier.fillMaxSize()) {
+            // Dibujar porterías
             drawRect(Color.Red, topGoal.first, androidx.compose.ui.geometry.Size(
                 topGoal.second.x - topGoal.first.x, topGoal.second.y - topGoal.first.y
             ))
             drawRect(Color.Green, bottomGoal.first, androidx.compose.ui.geometry.Size(
                 bottomGoal.second.x - bottomGoal.first.x, bottomGoal.second.y - bottomGoal.first.y
             ))
+
+            // Dibujar confeti
+            confetti.forEachIndexed { index, (pos, vel, color) ->
+                drawCircle(color, radius = 6f, center = pos)
+                confetti[index] = Triple(pos + vel, vel.copy(y = vel.y + 0.2f), color) // gravedad
+            }
+
+            // Dibujar pelota
             drawCircle(Color.White, userRadius, center)
         }
+
+        // Contador
         Box(
             modifier = Modifier
                 .background(Color.LightGray, shape = RoundedCornerShape(8.dp))
@@ -121,6 +162,8 @@ fun FutbolitoGameScreen(viewModel: SensorViewModel, modifier: Modifier = Modifie
                 Text(text = "$topCount", color = Color.Green, fontSize = 20.sp)
             }
         }
+
+        // Temporizador
         Text(
             text = "Tiempo: $timeLeft s",
             color = Color.White,
@@ -128,6 +171,8 @@ fun FutbolitoGameScreen(viewModel: SensorViewModel, modifier: Modifier = Modifie
             fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.TopCenter).padding(16.dp)
         )
+
+        // Mensaje final
         if (timeLeft == 0) {
             Box(
                 modifier = Modifier
@@ -143,12 +188,21 @@ fun FutbolitoGameScreen(viewModel: SensorViewModel, modifier: Modifier = Modifie
                                 timeLeft = 60
                                 topCount = 0
                                 bottomCount = 0
+                                prevTopCount = 0
+                                prevBottomCount = 0
+                                confetti.clear()
                             }
                         )
                     }
             ) {
                 Text(
-                    text = if (topCount > bottomCount) "    ¡Fin del juego!\n¡Jugador verde gana!" else "   ¡Fin del juego!\n¡Jugador rojo gana!",
+                    text = if (topCount > bottomCount) {
+                        "¡Fin del juego!\n¡Jugador verde gana!"
+                    } else if (bottomCount > topCount) {
+                        "¡Fin del juego!\n¡Jugador rojo gana!"
+                    } else {
+                        "¡Fin del juego!\n¡Empate!"
+                    },
                     color = Color.Gray,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
